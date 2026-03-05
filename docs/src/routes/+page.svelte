@@ -1,18 +1,73 @@
 <script lang="ts">
   import { Haptics } from 'web-haptics-polyfill';
 
+  interface Vibration {
+    duration: number;
+    intensity?: number;
+    delay?: number;
+  }
+
+  const presetPatterns: Record<string, Vibration[]> = {
+    success:   [{ duration: 30, intensity: 0.5 }, { duration: 40, intensity: 1.0, delay: 60 }],
+    error:     [{ duration: 40, intensity: 0.9 }, { duration: 40, intensity: 0.9, delay: 30 }, { duration: 40, intensity: 0.9, delay: 30 }],
+    warning:   [{ duration: 40, intensity: 0.8 }, { duration: 40, intensity: 0.6, delay: 80 }],
+    selection: [{ duration: 15, intensity: 0.4 }],
+    light:     [{ duration: 20, intensity: 0.3 }],
+    medium:    [{ duration: 25, intensity: 0.6 }],
+    heavy:     [{ duration: 30, intensity: 1.0 }],
+    soft:      [{ duration: 40, intensity: 0.3 }],
+    rigid:     [{ duration: 15, intensity: 0.8 }],
+    nudge:     [{ duration: 20, intensity: 0.6 }, { duration: 20, intensity: 0.8, delay: 40 }],
+    buzz:      [{ duration: 300, intensity: 0.7 }],
+  };
+
+  const presetNames = Object.keys(presetPatterns);
+
   let hapticsInstance: Haptics | null = $state(null);
   let activePreset = $state('');
+  let playingSegments: { left: number; width: number; height: number }[] = $state([]);
+  let animationProgress = $state(0);
+  let animationTimer: ReturnType<typeof requestAnimationFrame> | null = null;
 
   function getHaptics() {
     if (!hapticsInstance) hapticsInstance = new Haptics({ debug: true });
     return hapticsInstance;
   }
 
+  function buildSegments(pattern: Vibration[]) {
+    const totalDuration = pattern.reduce((t, v) => t + (v.delay ?? 0) + v.duration, 0);
+    const scale = 100 / totalDuration;
+    let cursor = 0;
+    return pattern.map(v => {
+      cursor += (v.delay ?? 0);
+      const seg = { left: cursor * scale, width: v.duration * scale, height: (v.intensity ?? 1) * 100 };
+      cursor += v.duration;
+      return seg;
+    });
+  }
+
   function playPreset(preset: string) {
+    if (animationTimer) cancelAnimationFrame(animationTimer);
     activePreset = preset;
     getHaptics().trigger(preset as any);
-    setTimeout(() => activePreset = '', 400);
+
+    const pattern = presetPatterns[preset];
+    playingSegments = buildSegments(pattern);
+    const totalMs = pattern.reduce((t, v) => t + (v.delay ?? 0) + v.duration, 0);
+
+    animationProgress = 0;
+    const start = performance.now();
+    function tick() {
+      const elapsed = performance.now() - start;
+      animationProgress = Math.min(elapsed / totalMs, 1);
+      if (animationProgress < 1) {
+        animationTimer = requestAnimationFrame(tick);
+      } else {
+        animationTimer = null;
+        setTimeout(() => { activePreset = ''; }, 300);
+      }
+    }
+    animationTimer = requestAnimationFrame(tick);
   }
 
   const features = [
@@ -46,7 +101,7 @@
     {
       title: 'Install',
       description: 'Add the package to your project.',
-      code: 'npm install github:doublej/web-haptics-polyfill'
+      code: 'bun add github:doublej/web-haptics-polyfill'
     },
     {
       title: 'Import',
@@ -96,7 +151,7 @@
   let copied = $state(false);
 
   function copyInstall() {
-    navigator.clipboard.writeText('npm install github:doublej/web-haptics-polyfill');
+    navigator.clipboard.writeText('bun add github:doublej/web-haptics-polyfill');
     copied = true;
     setTimeout(() => copied = false, 2000);
   }
@@ -129,7 +184,7 @@
   <section class="install">
     <div class="container">
       <button class="install-box" onclick={copyInstall}>
-        <code>npm install github:doublej/web-haptics-polyfill</code>
+        <code>bun add github:doublej/web-haptics-polyfill</code>
         <span class="copy-hint">{copied ? 'Copied!' : 'Click to copy'}</span>
       </button>
     </div>
@@ -175,20 +230,42 @@
   </section>
 
   <!-- Demo -->
-  <section class="presets">
+  <section class="demo">
     <div class="container">
       <h2>Try It</h2>
-      <p class="section-description">Tap a preset to feel it. Uses real haptics on mobile, audio feedback on desktop.</p>
-      <div class="preset-grid">
-        {#each ['success', 'error', 'warning', 'selection', 'light', 'medium', 'heavy', 'soft', 'rigid', 'nudge', 'buzz'] as preset}
-          <button
-            class="preset-chip"
-            class:preset-active={activePreset === preset}
-            onclick={() => playPreset(preset)}
-          >
-            <code>{preset}</code>
-          </button>
-        {/each}
+      <p class="section-description">Tap a preset to trigger it. Real haptics on mobile, audio feedback on desktop.</p>
+      <div class="demo-card">
+        <div class="waveform">
+          <div class="waveform-track">
+            {#each playingSegments as seg}
+              <div
+                class="waveform-bar"
+                style="left: {seg.left}%; width: {seg.width}%; height: {seg.height}%;"
+              ></div>
+            {/each}
+            {#if activePreset}
+              <div class="waveform-cursor" style="left: {animationProgress * 100}%;"></div>
+            {/if}
+          </div>
+          <div class="waveform-label">
+            {#if activePreset}
+              <code>{activePreset}</code>
+            {:else}
+              <span class="waveform-hint">Tap a preset below</span>
+            {/if}
+          </div>
+        </div>
+        <div class="demo-grid">
+          {#each presetNames as preset}
+            <button
+              class="demo-btn"
+              class:demo-btn-active={activePreset === preset}
+              onclick={() => playPreset(preset)}
+            >
+              {preset}
+            </button>
+          {/each}
+        </div>
       </div>
     </div>
   </section>
@@ -453,38 +530,89 @@
     line-height: 1.5;
   }
 
-  /* Presets */
-  .preset-grid {
-    display: flex;
-    flex-wrap: wrap;
+  /* Demo */
+  .demo-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    margin-top: 32px;
+  }
+
+  .waveform {
+    margin-bottom: 28px;
+  }
+
+  .waveform-track {
+    position: relative;
+    height: 80px;
+    background: var(--bg-code);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .waveform-bar {
+    position: absolute;
+    bottom: 0;
+    background: var(--accent);
+    border-radius: 3px 3px 0 0;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+  }
+
+  .waveform-cursor {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent);
+    transition: none;
+  }
+
+  .waveform-label {
+    margin-top: 10px;
+    text-align: center;
+    height: 24px;
+  }
+
+  .waveform-label code {
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .waveform-hint {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+  }
+
+  .demo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     gap: 10px;
   }
 
-  .preset-chip {
-    background: var(--bg-secondary);
+  .demo-btn {
+    padding: 10px 8px;
     border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 8px 16px;
+    border-radius: 8px;
+    background: var(--bg-primary);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
     cursor: pointer;
-    font-family: inherit;
-    font-size: inherit;
-    transition: border-color 0.15s, transform 0.15s;
+    transition: border-color 0.15s, transform 0.1s, background 0.15s;
+    color: var(--text-primary);
   }
 
-  .preset-chip:hover {
+  .demo-btn:hover {
     border-color: var(--accent);
   }
 
-  .preset-chip:active,
-  .preset-active {
+  .demo-btn:active,
+  .demo-btn-active {
     transform: scale(0.95);
+    background: var(--accent);
+    color: #fff;
     border-color: var(--accent);
-    background: var(--bg-code);
-  }
-
-  .preset-chip code {
-    font-size: 0.9rem;
-    pointer-events: none;
   }
 
   /* Getting Started */
