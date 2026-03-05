@@ -8,6 +8,9 @@
     "build": "vite build",
     "preview": "vite preview"
   },
+  "dependencies": {
+    "web-haptics-polyfill": "file:.."
+  },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.7",
     "@sveltejs/kit": "^2.11.1",

@@ -1,5 +1,19 @@
 <script lang="ts">
-  import { base } from '$app/paths';
+  import { Haptics } from 'web-haptics-polyfill';
+
+  let hapticsInstance: Haptics | null = $state(null);
+  let activePreset = $state('');
+
+  function getHaptics() {
+    if (!hapticsInstance) hapticsInstance = new Haptics({ debug: true });
+    return hapticsInstance;
+  }
+
+  function playPreset(preset: string) {
+    activePreset = preset;
+    getHaptics().trigger(preset as any);
+    setTimeout(() => activePreset = '', 400);
+  }
 
   const features = [
     {
@@ -32,7 +46,7 @@
     {
       title: 'Install',
       description: 'Add the package to your project.',
-      code: 'npm install web-haptics-polyfill'
+      code: 'npm install github:doublej/web-haptics-polyfill'
     },
     {
       title: 'Import',
@@ -82,7 +96,7 @@
   let copied = $state(false);
 
   function copyInstall() {
-    navigator.clipboard.writeText('npm install web-haptics-polyfill');
+    navigator.clipboard.writeText('npm install github:doublej/web-haptics-polyfill');
     copied = true;
     setTimeout(() => copied = false, 2000);
   }
@@ -115,7 +129,7 @@
   <section class="install">
     <div class="container">
       <button class="install-box" onclick={copyInstall}>
-        <code>npm install web-haptics-polyfill</code>
+        <code>npm install github:doublej/web-haptics-polyfill</code>
         <span class="copy-hint">{copied ? 'Copied!' : 'Click to copy'}</span>
       </button>
     </div>
@@ -160,16 +174,20 @@
     </div>
   </section>
 
-  <!-- Presets -->
+  <!-- Demo -->
   <section class="presets">
     <div class="container">
-      <h2>Presets</h2>
-      <p class="section-description">Built-in patterns tuned for common interaction feedback.</p>
+      <h2>Try It</h2>
+      <p class="section-description">Tap a preset to feel it. Uses real haptics on mobile, audio feedback on desktop.</p>
       <div class="preset-grid">
         {#each ['success', 'error', 'warning', 'selection', 'light', 'medium', 'heavy', 'soft', 'rigid', 'nudge', 'buzz'] as preset}
-          <div class="preset-chip">
+          <button
+            class="preset-chip"
+            class:preset-active={activePreset === preset}
+            onclick={() => playPreset(preset)}
+          >
             <code>{preset}</code>
-          </div>
+          </button>
         {/each}
       </div>
     </div>
@@ -447,10 +465,26 @@
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 8px 16px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+
+  .preset-chip:hover {
+    border-color: var(--accent);
+  }
+
+  .preset-chip:active,
+  .preset-active {
+    transform: scale(0.95);
+    border-color: var(--accent);
+    background: var(--bg-code);
   }
 
   .preset-chip code {
     font-size: 0.9rem;
+    pointer-events: none;
   }
 
   /* Getting Started */

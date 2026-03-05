@@ -5,7 +5,8 @@ Cross-platform haptic feedback for mobile web apps. Uses the iOS Safari `<input 
 ## Install
 
 ```sh
-npm install web-haptics-polyfill
+# Not yet published to npm — install from GitHub:
+npm install github:doublej/web-haptics-polyfill
 ```
 
 ## Usage

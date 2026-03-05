@@ -7,27 +7,27 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     },
     "./react": {
       "types": "./dist/react/index.d.ts",
-      "import": "./dist/react/index.mjs",
-      "require": "./dist/react/index.js"
+      "import": "./dist/react/index.js",
+      "require": "./dist/react/index.cjs"
     },
     "./svelte": {
       "types": "./dist/svelte/index.d.ts",
-      "import": "./dist/svelte/index.mjs",
-      "require": "./dist/svelte/index.js"
+      "import": "./dist/svelte/index.js",
+      "require": "./dist/svelte/index.cjs"
     },
     "./vue": {
       "types": "./dist/vue/index.d.ts",
-      "import": "./dist/vue/index.mjs",
-      "require": "./dist/vue/index.js"
+      "import": "./dist/vue/index.js",
+      "require": "./dist/vue/index.cjs"
     }
   },
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": ["dist"],
   "scripts": {
